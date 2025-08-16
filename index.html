@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Renovación 21">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiUmVub3ZhY2nDs24gMjEiLCJzaG9ydF9uYW1lIjoiUmVub3ZhY2nDs24yMSIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZmZmZmZmIiwidGhlbWVfY29sb3IiOiIjNjY3ZWVhIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCwlM0NzdmcgeG1sbnM9J2h0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnJyB3aWR0aD0nMTkyJyBoZWlnaHQ9JzE5Micgdmlld0JveD0nMCAwIDE5MiAxOTInJTNFJTNDcmVjdCB3aWR0aD0nMTkyJyBoZWlnaHQ9JzE5MicgZmlsbD0nJTIzNjY3ZWVhJy8lM0UlM0N0ZXh0IHg9Jzk2JyB5PScxMTAnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZvbnQtc2l6ZT0nNjAnIGZpbGw9JyUyM2ZmZmZmZiclM0UlRjAlOUYlOTElOEElM0MvdGV4dCUzRSUzQy9zdmclM0UiLCJzaXplcyI6IjE5MngxOTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+    <title>Sistema de Asistencia - Renovación 21</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dexie/3.2.4/dexie.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .photo-preview { 
+            width: 120px; 
+            height: 120px; 
+            object-fit: cover; 
+            border-radius: 50%;
+            border: 4px solid #667eea;
+        }
+        .member-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .member-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        .attendance-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center">
+                        <span class="text-2xl">✨</span>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">Renovación 21</h1>
+                        <p class="text-purple-200">Sistema de Asistencia Juvenil</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="syncStatus" class="flex items-center space-x-2 text-sm">
+                        <div id="syncIndicator" class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                        <span id="syncText">Sincronizado</span>
+                    </div>
+                    <button onclick="showSection('registro')" id="btn-registro" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all text-sm md:text-base">
+                        📝 Registro
+                    </button>
+                    <button onclick="showSection('asistencia')" id="btn-asistencia" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all text-sm md:text-base">
+                        ✅ Asistencia
+                    </button>
+                    <button onclick="exportarDatos()" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all text-sm md:text-base">
+                        💾 Backup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Sección de Registro -->
+        <div id="section-registro" class="section">
+            <div class="bg-white rounded-2xl card-shadow p-8 mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                    <span class="mr-3">👤</span>
+                    Registro de Jóvenes
+                </h2>
+                
+                <form id="registroForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Foto -->
+                    <div class="md:col-span-2 flex flex-col items-center">
+                        <div class="mb-4">
+                            <img id="photoPreview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%23e5e7eb'/%3E%3Ctext x='60' y='70' text-anchor='middle' font-size='40' fill='%23666'%3E👤%3C/text%3E%3C/svg%3E" class="photo-preview" alt="Vista previa">
+                        </div>
+                        <input type="file" id="foto" accept="image/*" class="hidden">
+                        <button type="button" onclick="document.getElementById('foto').click()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            📷 Subir Foto
+                        </button>
+                    </div>
+
+                    <!-- Información Personal -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nombre Completo *</label>
+                        <input type="text" id="nombre" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha de Nacimiento *</label>
+                        <input type="date" id="fechaNacimiento" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Hobby Favorito</label>
+                        <input type="text" id="hobby" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ej: Fútbol, Música, Arte...">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Color Favorito</label>
+                        <div class="flex space-x-2">
+                            <input type="color" id="colorFavorito" class="w-16 h-12 border border-gray-300 rounded-lg cursor-pointer">
+                            <input type="text" id="colorTexto" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Nombre del color">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Felipe Líder</label>
+                        <input type="text" id="felipeLider" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Nombre del líder asignado">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Nivel PFI</label>
+                        <select id="nivelPFI" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option value="">Seleccionar nivel</option>
+                            <option value="Básico">Básico</option>
+                            <option value="Intermedio">Intermedio</option>
+                            <option value="Avanzado">Avanzado</option>
+                            <option value="Líder">Líder</option>
+                        </select>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Dirección</label>
+                        <textarea id="direccion" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Dirección completa"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Número de Contacto *</label>
+                        <input type="tel" id="contacto" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Ej: +57 300 123 4567">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Otros</label>
+                        <input type="text" id="otros" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Información adicional">
+                    </div>
+
+                    <div class="md:col-span-2 flex justify-end space-x-4">
+                        <button type="button" onclick="limpiarFormulario()" class="px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                            🔄 Limpiar
+                        </button>
+                        <button type="submit" class="px-8 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium">
+                            💾 Registrar Joven
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sección de Asistencia -->
+        <div id="section-asistencia" class="section hidden">
+            <div class="bg-white rounded-2xl card-shadow p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-gray-800 flex items-center">
+                        <span class="mr-3">✅</span>
+                        Control de Asistencia
+                    </h2>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-sm text-gray-600">Fecha:</span>
+                        <input type="date" id="fechaAsistencia" class="px-3 py-2 border border-gray-300 rounded-lg" value="">
+                        <button onclick="exportarAsistencia()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                            📊 Exportar
+                        </button>
+                        <button onclick="showSection('config')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            ⚙️ Config
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <input type="text" id="buscarJoven" placeholder="🔍 Buscar joven por nombre..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <div id="estadisticasAsistencia" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-blue-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-blue-600" id="totalRegistrados">0</div>
+                        <div class="text-sm text-blue-800">Total Registrados</div>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-green-600" id="totalPresentes">0</div>
+                        <div class="text-sm text-green-800">Presentes Hoy</div>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg text-center">
+                        <div class="text-2xl font-bold text-purple-600" id="porcentajeAsistencia">0%</div>
+                        <div class="text-sm text-purple-800">% Asistencia</div>
+                    </div>
+                </div>
+
+                <div id="listaJovenes" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Los jóvenes se cargarán aquí dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Configuración -->
+        <div id="section-config" class="section hidden">
+            <div class="bg-white rounded-2xl card-shadow p-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-6 flex items-center">
+                    <span class="mr-3">⚙️</span>
+                    Configuración y Sincronización
+                </h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Configuración de Sincronización -->
+                    <div class="space-y-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">🔄 Sincronización en la Nube</h3>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Código de Iglesia</label>
+                            <input type="text" id="codigoIglesia" placeholder="Ej: RENOVACION21_MAIN" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <p class="text-xs text-gray-500 mt-1">Este código permite sincronizar datos entre dispositivos</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Clave de Acceso</label>
+                            <input type="password" id="claveAcceso" placeholder="Contraseña segura" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        </div>
+
+                        <div class="flex space-x-3">
+                            <button onclick="configurarSincronizacion()" class="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                🔗 Conectar
+                            </button>
+                            <button onclick="sincronizarAhora()" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                ↻ Sincronizar
+                            </button>
+                        </div>
+
+                        <div id="estadoConexion" class="p-4 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+                                <span class="text-sm text-gray-600">No conectado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gestión de Datos -->
+                    <div class="space-y-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">💾 Gestión de Datos</h3>
+                        
+                        <div class="space-y-3">
+                            <button onclick="exportarTodosDatos()" class="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                📤 Exportar Todos los Datos
+                            </button>
+                            
+                            <div class="relative">
+                                <input type="file" id="importarArchivo" accept=".json" class="hidden">
+                                <button onclick="document.getElementById('importarArchivo').click()" class="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                    📥 Importar Datos
+                                </button>
+                            </div>
+                            
+                            <button onclick="crearBackupAutomatico()" class="w-full px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                                🔄 Backup Automático
+                            </button>
+                            
+                            <button onclick="limpiarTodosDatos()" class="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                🗑️ Limpiar Todos los Datos
+                            </button>
+                        </div>
+
+                        <div id="estadisticasDB" class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-700 mb-2">📊 Estadísticas de la Base de Datos</h4>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <div>Jóvenes registrados: <span id="totalJovenesDB">0</span></div>
+                                <div>Registros de asistencia: <span id="totalAsistenciasDB">0</span></div>
+                                <div>Última sincronización: <span id="ultimaSync">Nunca</span></div>
+                                <div>Tamaño de datos: <span id="tamañoDatos">0 KB</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Sistema -->
+                <div class="mt-8 p-6 bg-blue-50 rounded-lg">
+                    <h4 class="font-semibold text-blue-800 mb-3">ℹ️ Información del Sistema</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-700">
+                        <div>
+                            <strong>Versión:</strong> 2.0 Multiplataforma
+                        </div>
+                        <div>
+                            <strong>Dispositivo:</strong> <span id="tipoDispositivo">Detectando...</span>
+                        </div>
+                        <div>
+                            <strong>Navegador:</strong> <span id="navegadorInfo">Detectando...</span>
+                        </div>
+                        <div>
+                            <strong>Estado PWA:</strong> <span id="estadoPWA">Verificando...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Base de datos IndexedDB con Dexie
+        const db = new Dexie('RenovacionDB');
+        db.version(1).stores({
+            jovenes: '++id, nombre, fechaNacimiento, contacto, fechaRegistro, sincronizado',
+            asistencias: '++id, jovenId, fecha, presente, sincronizado',
+            configuracion: 'clave, valor'
+        });
+
+        // Variables globales
+        let jovenes = [];
+        let asistenciaHoy = {};
+        let configuracionSync = {
+            codigoIglesia: '',
+            claveAcceso: '',
+            conectado: false,
+            ultimaSync: null
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Inicializar base de datos
+                await inicializarDB();
+                
+                // Cargar configuración
+                await cargarConfiguracion();
+                
+                // Detectar información del dispositivo
+                detectarDispositivo();
+                
+                // Configurar fecha actual
+                document.getElementById('fechaAsistencia').value = new Date().toISOString().split('T')[0];
+                
+                // Cargar datos
+                await cargarJovenesDB();
+                await cargarAsistencia();
+                actualizarEstadisticas();
+                actualizarEstadisticasDB();
+                
+                // Event listeners
+                document.getElementById('foto').addEventListener('change', previsualizarFoto);
+                document.getElementById('colorFavorito').addEventListener('change', function() {
+                    document.getElementById('colorTexto').value = this.value;
+                });
+                document.getElementById('registroForm').addEventListener('submit', registrarJoven);
+                document.getElementById('buscarJoven').addEventListener('input', filtrarJovenes);
+                document.getElementById('fechaAsistencia').addEventListener('change', cambiarFecha);
+                document.getElementById('importarArchivo').addEventListener('change', importarDatos);
+                
+                // Configurar sincronización automática
+                configurarSincronizacionAutomatica();
+                
+                // Registrar Service Worker para PWA
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register('data:application/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgZXZlbnQgPT4ge30pOw==');
+                }
+                
+                console.log('✅ Sistema inicializado correctamente');
+            } catch (error) {
+                console.error('❌ Error al inicializar:', error);
+                mostrarNotificacion('Error al inicializar el sistema', 'error');
+            }
+        });
+
+        // Funciones de base de datos
+        async function inicializarDB() {
+            try {
+                await db.open();
+                console.log('📊 Base de datos inicializada');
+            } catch (error) {
+                console.error('Error al abrir la base de datos:', error);
+                throw error;
+            }
+        }
+
+        async function cargarConfiguracion() {
+            try {
+                const config = await db.configuracion.toArray();
+                config.forEach(item => {
+                    if (configuracionSync.hasOwnProperty(item.clave)) {
+                        configuracionSync[item.clave] = item.valor;
+                    }
+                });
+                
+                // Actualizar UI
+                if (configuracionSync.codigoIglesia) {
+                    document.getElementById('codigoIglesia').value = configuracionSync.codigoIglesia;
+                }
+                if (configuracionSync.claveAcceso) {
+                    document.getElementById('claveAcceso').value = configuracionSync.claveAcceso;
+                }
+                
+                actualizarEstadoConexion();
+            } catch (error) {
+                console.error('Error al cargar configuración:', error);
+            }
+        }
+
+        async function guardarConfiguracion() {
+            try {
+                for (const [clave, valor] of Object.entries(configuracionSync)) {
+                    await db.configuracion.put({ clave, valor });
+                }
+            } catch (error) {
+                console.error('Error al guardar configuración:', error);
+            }
+        }
+
+        async function cargarJovenesDB() {
+            try {
+                jovenes = await db.jovenes.orderBy('nombre').toArray();
+                console.log(`📋 Cargados ${jovenes.length} jóvenes de la base de datos`);
+            } catch (error) {
+                console.error('Error al cargar jóvenes:', error);
+                jovenes = [];
+            }
+        }
+
+        async function guardarJovenDB(joven) {
+            try {
+                joven.sincronizado = false;
+                joven.fechaRegistro = new Date().toISOString();
+                const id = await db.jovenes.add(joven);
+                joven.id = id;
+                jovenes.push(joven);
+                
+                // Sincronizar automáticamente si está configurado
+                if (configuracionSync.conectado) {
+                    await sincronizarJoven(joven);
+                }
+                
+                return id;
+            } catch (error) {
+                console.error('Error al guardar joven:', error);
+                throw error;
+            }
+        }
+
+        async function cargarAsistenciaDB(fecha) {
+            try {
+                const asistencias = await db.asistencias.where('fecha').equals(fecha).toArray();
+                asistenciaHoy = {};
+                asistencias.forEach(asistencia => {
+                    asistenciaHoy[asistencia.jovenId] = asistencia.presente;
+                });
+            } catch (error) {
+                console.error('Error al cargar asistencia:', error);
+                asistenciaHoy = {};
+            }
+        }
+
+        async function guardarAsistenciaDB(jovenId, presente, fecha) {
+            try {
+                const asistenciaExistente = await db.asistencias
+                    .where(['jovenId', 'fecha'])
+                    .equals([jovenId, fecha])
+                    .first();
+
+                const datosAsistencia = {
+                    jovenId: jovenId,
+                    fecha: fecha,
+                    presente: presente,
+                    sincronizado: false,
+                    timestamp: new Date().toISOString()
+                };
+
+                if (asistenciaExistente) {
+                    await db.asistencias.update(asistenciaExistente.id, datosAsistencia);
+                } else {
+                    await db.asistencias.add(datosAsistencia);
+                }
+
+                // Sincronizar automáticamente si está configurado
+                if (configuracionSync.conectado) {
+                    await sincronizarAsistencia(datosAsistencia);
+                }
+            } catch (error) {
+                console.error('Error al guardar asistencia:', error);
+            }
+        }
+
+        // Funciones de sincronización
+        async function sincronizarJoven(joven) {
+            if (!configuracionSync.conectado) return;
+            
+            try {
+                // Simular sincronización con servidor
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Marcar como sincronizado
+                await db.jovenes.update(joven.id, { sincronizado: true });
+                
+                mostrarNotificacion('Joven sincronizado correctamente', 'success');
+                actualizarIndicadorSync('sync');
+            } catch (error) {
+                console.error('Error al sincronizar joven:', error);
+                mostrarNotificacion('Error al sincronizar', 'error');
+                actualizarIndicadorSync('error');
+            }
+        }
+
+        async function sincronizarAsistencia(asistencia) {
+            if (!configuracionSync.conectado) return;
+            
+            try {
+                // Simular sincronización con servidor
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Marcar como sincronizado
+                const asistenciaDB = await db.asistencias
+                    .where(['jovenId', 'fecha'])
+                    .equals([asistencia.jovenId, asistencia.fecha])
+                    .first();
+                
+                if (asistenciaDB) {
+                    await db.asistencias.update(asistenciaDB.id, { sincronizado: true });
+                }
+                
+                actualizarIndicadorSync('sync');
+            } catch (error) {
+                console.error('Error al sincronizar asistencia:', error);
+                actualizarIndicadorSync('error');
+            }
+        }
+
+        function detectarDispositivo() {
+            const userAgent = navigator.userAgent;
+            let dispositivo = 'Escritorio';
+            let navegador = 'Desconocido';
+            let esPWA = 'No';
+
+            // Detectar dispositivo
+            if (/Android/i.test(userAgent)) {
+                dispositivo = 'Android';
+            } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+                dispositivo = 'iOS';
+            } else if (/Windows/i.test(userAgent)) {
+                dispositivo = 'Windows';
+            } else if (/Mac/i.test(userAgent)) {
+                dispositivo = 'Mac';
+            }
+
+            // Detectar navegador
+            if (userAgent.includes('Chrome')) navegador = 'Chrome';
+            else if (userAgent.includes('Firefox')) navegador = 'Firefox';
+            else if (userAgent.includes('Safari')) navegador = 'Safari';
+            else if (userAgent.includes('Edge')) navegador = 'Edge';
+
+            // Detectar PWA
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                esPWA = 'Sí (Instalada)';
+            } else if (window.navigator.standalone === true) {
+                esPWA = 'Sí (iOS)';
+            }
+
+            // Actualizar UI
+            document.getElementById('tipoDispositivo').textContent = dispositivo;
+            document.getElementById('navegadorInfo').textContent = navegador;
+            document.getElementById('estadoPWA').textContent = esPWA;
+        }
+
+        function mostrarNotificacion(mensaje, tipo = 'info') {
+            const colores = {
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+                info: 'bg-blue-500',
+                warning: 'bg-yellow-500'
+            };
+
+            const notificacion = document.createElement('div');
+            notificacion.className = `fixed top-4 right-4 ${colores[tipo]} text-white px-6 py-3 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+            notificacion.textContent = mensaje;
+            
+            document.body.appendChild(notificacion);
+            
+            setTimeout(() => {
+                notificacion.classList.remove('translate-x-full');
+            }, 100);
+            
+            setTimeout(() => {
+                notificacion.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notificacion);
+                }, 300);
+            }, 3000);
+        }
+
+        function actualizarIndicadorSync(estado) {
+            const indicador = document.getElementById('syncIndicator');
+            const texto = document.getElementById('syncText');
+            
+            switch (estado) {
+                case 'sync':
+                    indicador.className = 'w-3 h-3 bg-green-400 rounded-full animate-pulse';
+                    texto.textContent = 'Sincronizado';
+                    break;
+                case 'syncing':
+                    indicador.className = 'w-3 h-3 bg-yellow-400 rounded-full animate-spin';
+                    texto.textContent = 'Sincronizando...';
+                    break;
+                case 'error':
+                    indicador.className = 'w-3 h-3 bg-red-400 rounded-full';
+                    texto.textContent = 'Error de sync';
+                    break;
+                case 'offline':
+                    indicador.className = 'w-3 h-3 bg-gray-400 rounded-full';
+                    texto.textContent = 'Sin conexión';
+                    break;
+            }
+        }
+
+        // Funciones de navegación
+        function showSection(section) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('section-' + section).classList.remove('hidden');
+            
+            // Actualizar botones activos
+            document.querySelectorAll('header button').forEach(btn => {
+                btn.classList.remove('bg-white', 'bg-opacity-30');
+                btn.classList.add('bg-opacity-20');
+            });
+            document.getElementById('btn-' + section).classList.remove('bg-opacity-20');
+            document.getElementById('btn-' + section).classList.add('bg-opacity-30');
+            
+            if (section === 'asistencia') {
+                cargarAsistencia();
+                actualizarEstadisticas();
+            }
+        }
+
+        // Funciones de registro
+        function previsualizarFoto(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('photoPreview').src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function registrarJoven(event) {
+            event.preventDefault();
+            
+            try {
+                const foto = document.getElementById('foto').files[0];
+                let fotoBase64 = document.getElementById('photoPreview').src;
+                
+                if (foto) {
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        await guardarJoven(e.target.result);
+                    };
+                    reader.readAsDataURL(foto);
+                } else {
+                    await guardarJoven(fotoBase64);
+                }
+            } catch (error) {
+                console.error('Error al registrar joven:', error);
+                mostrarNotificacion('Error al registrar el joven', 'error');
+            }
+        }
+
+        async function guardarJoven(fotoBase64) {
+            try {
+                const joven = {
+                    foto: fotoBase64,
+                    nombre: document.getElementById('nombre').value,
+                    fechaNacimiento: document.getElementById('fechaNacimiento').value,
+                    hobby: document.getElementById('hobby').value,
+                    colorFavorito: document.getElementById('colorFavorito').value,
+                    colorTexto: document.getElementById('colorTexto').value,
+                    felipeLider: document.getElementById('felipeLider').value,
+                    nivelPFI: document.getElementById('nivelPFI').value,
+                    direccion: document.getElementById('direccion').value,
+                    contacto: document.getElementById('contacto').value,
+                    otros: document.getElementById('otros').value
+                };
+
+                await guardarJovenDB(joven);
+                
+                mostrarNotificacion('✅ ¡Joven registrado exitosamente!', 'success');
+                limpiarFormulario();
+                actualizarEstadisticas();
+                actualizarEstadisticasDB();
+            } catch (error) {
+                console.error('Error al guardar joven:', error);
+                mostrarNotificacion('Error al guardar el joven', 'error');
+            }
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('registroForm').reset();
+            document.getElementById('photoPreview').src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='60' fill='%23e5e7eb'/%3E%3Ctext x='60' y='70' text-anchor='middle' font-size='40' fill='%23666'%3E👤%3C/text%3E%3C/svg%3E";
+        }
+
+        // Funciones de asistencia
+        async function cargarAsistencia() {
+            const fechaSeleccionada = document.getElementById('fechaAsistencia').value;
+            await cargarAsistenciaDB(fechaSeleccionada);
+            
+            const container = document.getElementById('listaJovenes');
+            container.innerHTML = '';
+
+            if (jovenes.length === 0) {
+                container.innerHTML = `
+                    <div class="md:col-span-3 text-center py-12">
+                        <div class="text-6xl mb-4">👥</div>
+                        <h3 class="text-xl font-semibold text-gray-600 mb-2">No hay jóvenes registrados</h3>
+                        <p class="text-gray-500">Registra algunos jóvenes primero para poder tomar asistencia</p>
+                        <button onclick="showSection('registro')" class="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                            Ir a Registro
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            jovenes.forEach(joven => {
+                const presente = asistenciaHoy[joven.id] || false;
+                const card = document.createElement('div');
+                card.className = `member-card bg-white rounded-xl p-6 card-shadow relative ${presente ? 'ring-2 ring-green-500' : ''}`;
+                card.innerHTML = `
+                    <div class="text-center">
+                        <div class="relative inline-block mb-4">
+                            <img src="${joven.foto}" alt="${joven.nombre}" class="w-20 h-20 rounded-full object-cover mx-auto border-4 ${presente ? 'border-green-500' : 'border-gray-300'}">
+                            <div class="attendance-badge ${presente ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'}">
+                                ${presente ? '✓' : '○'}
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-gray-800 mb-2">${joven.nombre}</h3>
+                        <div class="text-sm text-gray-600 mb-4">
+                            <div class="flex items-center justify-center mb-1">
+                                <span class="mr-2">🎯</span>
+                                <span>${joven.nivelPFI || 'No especificado'}</span>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <span class="mr-2">👨‍💼</span>
+                                <span>${joven.felipeLider || 'Sin asignar'}</span>
+                            </div>
+                        </div>
+                        <button onclick="toggleAsistencia(${joven.id})" class="w-full py-2 px-4 rounded-lg font-medium transition-colors ${presente ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'}">
+                            ${presente ? '✅ Presente' : '⭕ Marcar Presente'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function toggleAsistencia(jovenId) {
+            try {
+                const fechaSeleccionada = document.getElementById('fechaAsistencia').value;
+                const presente = !asistenciaHoy[jovenId];
+                
+                asistenciaHoy[jovenId] = presente;
+                await guardarAsistenciaDB(jovenId, presente, fechaSeleccionada);
+                
+                await cargarAsistencia();
+                actualizarEstadisticas();
+                actualizarEstadisticasDB();
+                
+                mostrarNotificacion(
+                    presente ? 'Asistencia marcada' : 'Asistencia desmarcada', 
+                    'success'
+                );
+            } catch (error) {
+                console.error('Error al actualizar asistencia:', error);
+                mostrarNotificacion('Error al actualizar asistencia', 'error');
+            }
+        }
+
+        function filtrarJovenes() {
+            const busqueda = document.getElementById('buscarJoven').value.toLowerCase();
+            const cards = document.querySelectorAll('.member-card');
+            
+            cards.forEach(card => {
+                const nombre = card.querySelector('h3').textContent.toLowerCase();
+                if (nombre.includes(busqueda)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        async function cambiarFecha() {
+            await cargarAsistencia();
+            actualizarEstadisticas();
+        }
+
+        function actualizarEstadisticas() {
+            const totalRegistrados = jovenes.length;
+            const totalPresentes = Object.values(asistenciaHoy).filter(presente => presente).length;
+            const porcentaje = totalRegistrados > 0 ? Math.round((totalPresentes / totalRegistrados) * 100) : 0;
+
+            document.getElementById('totalRegistrados').textContent = totalRegistrados;
+            document.getElementById('totalPresentes').textContent = totalPresentes;
+            document.getElementById('porcentajeAsistencia').textContent = porcentaje + '%';
+        }
+
+        function exportarAsistencia() {
+            const fechaSeleccionada = document.getElementById('fechaAsistencia').value;
+            const presentes = jovenes.filter(joven => asistenciaHoy[joven.id]);
+            
+            let reporte = `REPORTE DE ASISTENCIA - RENOVACIÓN 21\n`;
+            reporte += `Fecha: ${fechaSeleccionada}\n`;
+            reporte += `Total Registrados: ${jovenes.length}\n`;
+            reporte += `Total Presentes: ${presentes.length}\n`;
+            reporte += `Porcentaje de Asistencia: ${jovenes.length > 0 ? Math.round((presentes.length / jovenes.length) * 100) : 0}%\n\n`;
+            reporte += `JÓVENES PRESENTES:\n`;
+            reporte += `${'='.repeat(50)}\n`;
+            
+            presentes.forEach((joven, index) => {
+                reporte += `${index + 1}. ${joven.nombre}\n`;
+                reporte += `   Contacto: ${joven.contacto}\n`;
+                reporte += `   Líder: ${joven.felipeLider || 'Sin asignar'}\n`;
+                reporte += `   Nivel PFI: ${joven.nivelPFI || 'No especificado'}\n\n`;
+            });
+
+            const blob = new Blob([reporte], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `asistencia_renovacion21_${fechaSeleccionada}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Funciones de configuración
+        async function configurarSincronizacion() {
+            try {
+                const codigo = document.getElementById('codigoIglesia').value.trim();
+                const clave = document.getElementById('claveAcceso').value.trim();
+                
+                if (!codigo || !clave) {
+                    mostrarNotificacion('Por favor completa todos los campos', 'warning');
+                    return;
+                }
+                
+                configuracionSync.codigoIglesia = codigo;
+                configuracionSync.claveAcceso = clave;
+                configuracionSync.conectado = true;
+                configuracionSync.ultimaSync = new Date().toISOString();
+                
+                await guardarConfiguracion();
+                actualizarEstadoConexion();
+                
+                mostrarNotificacion('✅ Configuración guardada correctamente', 'success');
+                
+                // Sincronizar datos existentes
+                await sincronizarTodosDatos();
+                
+            } catch (error) {
+                console.error('Error al configurar sincronización:', error);
+                mostrarNotificacion('Error al configurar sincronización', 'error');
+            }
+        }
+
+        async function sincronizarAhora() {
+            if (!configuracionSync.conectado) {
+                mostrarNotificacion('Primero configura la sincronización', 'warning');
+                return;
+            }
+            
+            try {
+                actualizarIndicadorSync('syncing');
+                await sincronizarTodosDatos();
+                configuracionSync.ultimaSync = new Date().toISOString();
+                await guardarConfiguracion();
+                actualizarEstadisticasDB();
+                mostrarNotificacion('✅ Sincronización completada', 'success');
+            } catch (error) {
+                console.error('Error al sincronizar:', error);
+                mostrarNotificacion('Error al sincronizar', 'error');
+                actualizarIndicadorSync('error');
+            }
+        }
+
+        async function sincronizarTodosDatos() {
+            // Sincronizar jóvenes no sincronizados
+            const jovenesPendientes = await db.jovenes.where('sincronizado').equals(false).toArray();
+            for (const joven of jovenesPendientes) {
+                await sincronizarJoven(joven);
+            }
+            
+            // Sincronizar asistencias no sincronizadas
+            const asistenciasPendientes = await db.asistencias.where('sincronizado').equals(false).toArray();
+            for (const asistencia of asistenciasPendientes) {
+                await sincronizarAsistencia(asistencia);
+            }
+        }
+
+        function actualizarEstadoConexion() {
+            const estadoDiv = document.getElementById('estadoConexion');
+            const ultimaSyncSpan = document.getElementById('ultimaSync');
+            
+            if (configuracionSync.conectado) {
+                estadoDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-green-400 rounded-full"></div>
+                        <span class="text-sm text-green-600">Conectado a ${configuracionSync.codigoIglesia}</span>
+                    </div>
+                `;
+                
+                if (configuracionSync.ultimaSync) {
+                    const fecha = new Date(configuracionSync.ultimaSync);
+                    ultimaSyncSpan.textContent = fecha.toLocaleString();
+                } else {
+                    ultimaSyncSpan.textContent = 'Nunca';
+                }
+            } else {
+                estadoDiv.innerHTML = `
+                    <div class="flex items-center space-x-2">
+                        <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+                        <span class="text-sm text-gray-600">No conectado</span>
+                    </div>
+                `;
+                ultimaSyncSpan.textContent = 'Nunca';
+            }
+        }
+
+        async function exportarTodosDatos() {
+            try {
+                const todosJovenes = await db.jovenes.toArray();
+                const todasAsistencias = await db.asistencias.toArray();
+                const configuracion = await db.configuracion.toArray();
+                
+                const backup = {
+                    version: '2.0',
+                    fecha: new Date().toISOString(),
+                    jovenes: todosJovenes,
+                    asistencias: todasAsistencias,
+                    configuracion: configuracion
+                };
+                
+                const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `renovacion21_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                mostrarNotificacion('✅ Backup exportado correctamente', 'success');
+            } catch (error) {
+                console.error('Error al exportar datos:', error);
+                mostrarNotificacion('Error al exportar datos', 'error');
+            }
+        }
+
+        async function importarDatos(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const backup = JSON.parse(text);
+                
+                if (!backup.version || !backup.jovenes || !backup.asistencias) {
+                    throw new Error('Formato de archivo inválido');
+                }
+                
+                // Confirmar importación
+                if (!confirm('¿Estás seguro de importar estos datos? Esto reemplazará todos los datos actuales.')) {
+                    return;
+                }
+                
+                // Limpiar base de datos
+                await db.jovenes.clear();
+                await db.asistencias.clear();
+                
+                // Importar datos
+                await db.jovenes.bulkAdd(backup.jovenes);
+                await db.asistencias.bulkAdd(backup.asistencias);
+                
+                if (backup.configuracion) {
+                    await db.configuracion.clear();
+                    await db.configuracion.bulkAdd(backup.configuracion);
+                }
+                
+                // Recargar datos
+                await cargarJovenesDB();
+                await cargarConfiguracion();
+                await cargarAsistencia();
+                actualizarEstadisticas();
+                actualizarEstadisticasDB();
+                
+                mostrarNotificacion('✅ Datos importados correctamente', 'success');
+                
+            } catch (error) {
+                console.error('Error al importar datos:', error);
+                mostrarNotificacion('Error al importar datos: ' + error.message, 'error');
+            }
+            
+            // Limpiar input
+            event.target.value = '';
+        }
+
+        async function crearBackupAutomatico() {
+            try {
+                // Configurar backup automático cada 24 horas
+                const ultimoBackup = localStorage.getItem('ultimoBackupAutomatico');
+                const ahora = new Date().getTime();
+                
+                if (!ultimoBackup || (ahora - parseInt(ultimoBackup)) > 24 * 60 * 60 * 1000) {
+                    await exportarTodosDatos();
+                    localStorage.setItem('ultimoBackupAutomatico', ahora.toString());
+                    mostrarNotificacion('✅ Backup automático configurado', 'success');
+                } else {
+                    mostrarNotificacion('El backup automático ya está actualizado', 'info');
+                }
+            } catch (error) {
+                console.error('Error en backup automático:', error);
+                mostrarNotificacion('Error en backup automático', 'error');
+            }
+        }
+
+        async function limpiarTodosDatos() {
+            if (!confirm('⚠️ ¿Estás COMPLETAMENTE seguro de eliminar TODOS los datos? Esta acción NO se puede deshacer.')) {
+                return;
+            }
+            
+            if (!confirm('Esta es tu última oportunidad. ¿Realmente quieres eliminar todo?')) {
+                return;
+            }
+            
+            try {
+                await db.jovenes.clear();
+                await db.asistencias.clear();
+                await db.configuracion.clear();
+                
+                jovenes = [];
+                asistenciaHoy = {};
+                configuracionSync = {
+                    codigoIglesia: '',
+                    claveAcceso: '',
+                    conectado: false,
+                    ultimaSync: null
+                };
+                
+                // Limpiar UI
+                document.getElementById('codigoIglesia').value = '';
+                document.getElementById('claveAcceso').value = '';
+                
+                await cargarAsistencia();
+                actualizarEstadisticas();
+                actualizarEstadisticasDB();
+                actualizarEstadoConexion();
+                
+                mostrarNotificacion('✅ Todos los datos han sido eliminados', 'success');
+                
+            } catch (error) {
+                console.error('Error al limpiar datos:', error);
+                mostrarNotificacion('Error al limpiar datos', 'error');
+            }
+        }
+
+        async function actualizarEstadisticasDB() {
+            try {
+                const totalJovenes = await db.jovenes.count();
+                const totalAsistencias = await db.asistencias.count();
+                
+                // Calcular tamaño aproximado de datos
+                const todosJovenes = await db.jovenes.toArray();
+                const todasAsistencias = await db.asistencias.toArray();
+                const tamaño = Math.round((JSON.stringify(todosJovenes).length + JSON.stringify(todasAsistencias).length) / 1024);
+                
+                document.getElementById('totalJovenesDB').textContent = totalJovenes;
+                document.getElementById('totalAsistenciasDB').textContent = totalAsistencias;
+                document.getElementById('tamañoDatos').textContent = tamaño + ' KB';
+                
+                if (configuracionSync.ultimaSync) {
+                    const fecha = new Date(configuracionSync.ultimaSync);
+                    document.getElementById('ultimaSync').textContent = fecha.toLocaleString();
+                }
+            } catch (error) {
+                console.error('Error al actualizar estadísticas DB:', error);
+            }
+        }
+
+        function configurarSincronizacionAutomatica() {
+            // Sincronizar cada 5 minutos si está conectado
+            setInterval(async () => {
+                if (configuracionSync.conectado) {
+                    try {
+                        await sincronizarTodosDatos();
+                        configuracionSync.ultimaSync = new Date().toISOString();
+                        await guardarConfiguracion();
+                        actualizarIndicadorSync('sync');
+                    } catch (error) {
+                        console.error('Error en sincronización automática:', error);
+                        actualizarIndicadorSync('error');
+                    }
+                }
+            }, 5 * 60 * 1000); // 5 minutos
+            
+            // Backup automático diario
+            setInterval(async () => {
+                await crearBackupAutomatico();
+            }, 24 * 60 * 60 * 1000); // 24 horas
+        }
+
+        function exportarDatos() {
+            exportarTodosDatos();
+        }
+
+        // Mostrar sección de registro por defecto
+        showSection('registro');
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9703cad5b2fc3ef5',t:'MTc1NTM3NzMwNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
